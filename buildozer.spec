@@ -1,6 +1,6 @@
 [app]
-title = Sat Track
-package.name = sattrack
+title = Sat Track 6.3
+package.name = sattrack63
 package.domain = org.example
 source.dir = .
 source.include_exts = py,app,h,c
