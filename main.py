@@ -75,7 +75,7 @@ class LogWriter:
 
 
 class SatTrackApp(App):
-    title = "Sat Track"
+    title = "Sat Track 6.3"
 
     def build(self):
         Window.softinput_mode = "below_target"
@@ -203,9 +203,6 @@ class SatTrackApp(App):
 
     def on_install(self):
         f = os.path.join(HERE, "SatTrack.app")
-        if not os.path.exists(f):
-            self.log("SatTrack.app is not bundled in this APK. Copy it next to main.py and rebuild.")
-            return
         self.run(lambda: st.cmd_install(self.cfg, SimpleNamespace(files=[f], port=None)), needs_radio=True)
 
     def on_add(self):

@@ -16,6 +16,7 @@
 """
 Serial message functionalities
 """
+from __future__ import annotations
 
 MSG_NOTIFY_DEV_INFO = 0x0518
 MSG_NOTIFY_BL_VER = 0x0530
