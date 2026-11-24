@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from .fmt import HDR_SIZE, PASS_COUNT, PPM_LIMIT, parse_header, parse_index  # noqa: E402
 
-APP_SLOTS, APP_CODE_OFF, APP_ERR_MAGIC = 64, 0x1000, 2   # APP_SLOT_COUNT in app_overlay.h
+APP_SLOTS, APP_CODE_OFF, APP_ERR_MAGIC = 48, 0x1000, 2
 
 # Bytes per write command. 128-byte writes (about 150 bytes on the wire) fail
 # over the K-plug programming cable at 38400 baud, 64 works there and on USB-C.
@@ -19,8 +19,6 @@ CHUNK = 64
 
 class Radio:
     def __init__(self, port, ser=None):
-        """ser: an already open pyserial-like object (the Android app passes its
-        USB serial port); otherwise port is opened with pyserial."""
         import msg as mm
         self.mm = mm
         if ser is None:
@@ -66,7 +64,7 @@ class Radio:
 
     # ---- pass store ----
     def erase(self, sector):
-        r = self.call(0x0772, struct.pack("<BBI", sector, 0, self.ts), 0x0773, timeout=15)
+        r = self.call(0x0742, struct.pack("<BBI", sector, 0, self.ts), 0x0743, timeout=15)
         if r[5]:
             raise IOError(f"erase sector {sector}: status {r[5]}")
 
@@ -75,7 +73,7 @@ class Radio:
             chunk = data[off:off + CHUNK]
             if chunk.count(0xFF) == len(chunk):     # erased flash already reads 0xFF
                 continue
-            r = self.call(0x0774, struct.pack("<BBIHI", sector, 0, off, len(chunk), self.ts) + chunk, 0x0775)
+            r = self.call(0x0744, struct.pack("<BBIHI", sector, 0, off, len(chunk), self.ts) + chunk, 0x0745)
             if r[5]:
                 raise IOError(f"write sector {sector}+{off}: status {r[5]}")
 
@@ -87,7 +85,7 @@ class Radio:
             if skip is not None and skip[off:off + n].count(0xFF) == n:
                 out += b"\xff" * n
                 continue
-            r = self.call(0x0770, struct.pack("<BBHB", sector, 0, off, n), 0x0771)
+            r = self.call(0x0740, struct.pack("<BBHB", sector, 0, off, n), 0x0741)
             if r[5]:
                 raise IOError(f"read sector {sector}+{off}: status {r[5]}")
             out += r[8:8 + r[6]]
@@ -111,7 +109,7 @@ class Radio:
     # ---- clock ----
     def ticks(self):
         t0 = time.monotonic()
-        r = self.call(0x0776, b"", 0x0777)
+        r = self.call(0x0746, b"", 0x0747)
         return (t0 + time.monotonic()) / 2, struct.unpack_from("<I", r, 4)[0]
 
     def calibrate(self, seconds, progress=print):
