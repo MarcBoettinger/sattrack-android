@@ -21,11 +21,29 @@ from kivy.uix.textinput import TextInput
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import sattrack as st                       # noqa: E402
-from satlib import catalog                   # noqa: E402
-from satlib.config import Config             # noqa: E402
-from satlib.fmt import MODES, NAME_LEN, radio_ok  # noqa: E402
-from satlib.radio import Radio               # noqa: E402
+import traceback                              # noqa: E402
+
+IMPORT_ERROR = None
+try:
+    import sattrack as st                       # noqa: E402
+    from satlib import catalog                   # noqa: E402
+    from satlib.config import Config             # noqa: E402
+    from satlib.fmt import MODES, NAME_LEN, radio_ok  # noqa: E402
+    from satlib.radio import Radio               # noqa: E402
+except BaseException:                             # noqa: BLE001  incl. SystemExit; shown on screen
+    IMPORT_ERROR = traceback.format_exc()
+
+
+def error_screen(text):
+    from kivy.uix.label import Label as L
+    from kivy.uix.scrollview import ScrollView as SV
+    lab = L(text="Sat Track could not start. Send a screenshot of this.\n\n" + text,
+            size_hint_y=None, halign="left", valign="top")
+    lab.bind(width=lambda *_: setattr(lab, "text_size", (lab.width, None)),
+             texture_size=lambda *_: setattr(lab, "height", lab.texture_size[1]))
+    sv = SV()
+    sv.add_widget(lab)
+    return sv
 
 
 class NeedPermission(Exception):
@@ -78,6 +96,14 @@ class SatTrackApp(App):
     title = "Sat Track 6.3"
 
     def build(self):
+        if IMPORT_ERROR:
+            return error_screen(IMPORT_ERROR)
+        try:
+            return self._build()
+        except Exception:                        # noqa: BLE001
+            return error_screen(traceback.format_exc())
+
+    def _build(self):
         Window.softinput_mode = "below_target"
         self.cfg = Config(os.path.join(self.user_data_dir, "config.json"))
         self.busy = False
@@ -175,6 +201,7 @@ class SatTrackApp(App):
                 self.log(str(e))
             except Exception as e:  # noqa: BLE001
                 self.log(f"Error: {type(e).__name__}: {e}")
+                self.log("".join(traceback.format_exc().splitlines(True)[-8:]))
             finally:
                 try:
                     ser.close()
