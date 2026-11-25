@@ -104,6 +104,7 @@ class SatTrackApp(App):
             return error_screen(traceback.format_exc())
 
     def _build(self):
+        self._fix_timezone()
         Window.softinput_mode = "below_target"
         self.cfg = Config(os.path.join(self.user_data_dir, "config.json"))
         self.busy = False
@@ -147,6 +148,18 @@ class SatTrackApp(App):
         self.log("Sat Track. Set location, add satellites, connect the radio by USB-C.")
         return root
 
+    @staticmethod
+    def _fix_timezone():
+        """Python on Android often runs in UTC; the pass times on the radio are local time."""
+        try:
+            from jnius import autoclass
+            tz = autoclass("java.util.TimeZone").getDefault().getID()
+            if tz:
+                os.environ["TZ"] = str(tz)
+                time.tzset()
+        except Exception:                        # noqa: BLE001  not on Android, or no jnius
+            pass
+
     def _btn(self, text, fn, h=None):
         b = Button(text=text, size_hint_y=None, height=h or 56)
         b.bind(on_release=lambda *_: fn())
@@ -175,7 +188,7 @@ class SatTrackApp(App):
             self.log("Latitude, longitude, altitude and min elevation must be numbers.")
 
     # ---- worker ----
-    def run(self, fn, needs_radio=False, needs_loc=True):
+    def run_job(self, fn, needs_radio=False, needs_loc=True):
         if self.busy:
             self.log("Busy, wait for the current job.")
             return
@@ -213,29 +226,29 @@ class SatTrackApp(App):
 
     # ---- actions ----
     def on_sats(self):
-        self.run(lambda: st.cmd_sats(self.cfg), needs_loc=False)
+        self.run_job(lambda: st.cmd_sats(self.cfg), needs_loc=False)
 
     def on_passes(self):
-        self.run(lambda: st.cmd_passes(self.cfg, SimpleNamespace(sat=None, hours=48, min_el=None)))
+        self.run_job(lambda: st.cmd_passes(self.cfg, SimpleNamespace(sat=None, hours=48, min_el=None)))
 
     def on_load(self):
-        self.run(lambda: st.cmd_load(self.cfg, SimpleNamespace(
+        self.run_job(lambda: st.cmd_load(self.cfg, SimpleNamespace(
             sat=None, hours=48, min_el=None, pick="next", yes=True, out=None, port=None)), needs_radio=True)
 
     def on_radio(self):
-        self.run(lambda: st.cmd_radio(self.cfg, SimpleNamespace(port=None)), needs_radio=True)
+        self.run_job(lambda: st.cmd_radio(self.cfg, SimpleNamespace(port=None)), needs_radio=True)
 
     def on_cal(self):
-        self.run(lambda: st.cmd_calibrate(self.cfg, SimpleNamespace(seconds=120, port=None)), needs_radio=True)
+        self.run_job(lambda: st.cmd_calibrate(self.cfg, SimpleNamespace(seconds=120, port=None)), needs_radio=True)
 
     def on_install(self):
         f = os.path.join(HERE, "SatTrack.app")
-        self.run(lambda: st.cmd_install(self.cfg, SimpleNamespace(files=[f], port=None)), needs_radio=True)
+        self.run_job(lambda: st.cmd_install(self.cfg, SimpleNamespace(files=[f], port=None)), needs_radio=True)
 
     def on_add(self):
         q = self.query.text.strip()
         if q:
-            self.run(lambda: self._add(q), needs_loc=False)
+            self.run_job(lambda: self._add(q), needs_loc=False)
 
     def _add(self, query):
         """Like 'sattrack add', without questions: first transmitter the radio can use."""
