@@ -21,6 +21,15 @@ from kivy.uix.textinput import TextInput
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+# Python on Android has no system CA list: use the one from certifi for https.
+try:
+    import ssl
+    import certifi
+    os.environ["SSL_CERT_FILE"] = certifi.where()
+    ssl._create_default_https_context = lambda *a, **k: ssl.create_default_context(cafile=certifi.where())
+except Exception:                                # noqa: BLE001
+    pass
+
 import traceback                              # noqa: E402
 
 IMPORT_ERROR = None
