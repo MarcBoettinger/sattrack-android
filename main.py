@@ -43,6 +43,47 @@ except BaseException:                             # noqa: BLE001  incl. SystemEx
     IMPORT_ERROR = traceback.format_exc()
 
 
+def _android_get(url, timeout=20):
+    """HTTP GET through Android's own network stack (system certificates, DNS, IPv6)."""
+    from jnius import autoclass, cast
+    URL = autoclass("java.net.URL")
+    Scanner = autoclass("java.util.Scanner")
+    conn = cast("java.net.HttpURLConnection", URL(url).openConnection())
+    ms = int(timeout * 1000)
+    conn.setConnectTimeout(ms)
+    conn.setReadTimeout(ms)
+    conn.setRequestProperty("User-Agent", "sattrack (UV-K5 Sat Track)")
+    try:
+        code = conn.getResponseCode()
+        if code >= 400:
+            raise IOError(f"HTTP {code} from {url.split('/')[2]}")
+        sc = Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A")
+        return sc.next() if sc.hasNext() else ""
+    finally:
+        conn.disconnect()
+
+
+def _use_android_http(catalog_module):
+    """Replace catalog._get by the Android version when running on a phone."""
+    try:
+        import jnius  # noqa: F401
+    except ImportError:
+        return
+    original = catalog_module._get
+
+    def _get(url, timeout=20):
+        try:
+            return _android_get(url, timeout)
+        except Exception as e:                   # noqa: BLE001
+            raise IOError(f"network error: {type(e).__name__}: {e}") from None
+    _get.original = original
+    catalog_module._get = _get
+
+
+if IMPORT_ERROR is None:
+    _use_android_http(catalog)
+
+
 def error_screen(text):
     from kivy.uix.label import Label as L
     from kivy.uix.scrollview import ScrollView as SV
