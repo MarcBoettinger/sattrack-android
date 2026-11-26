@@ -16,6 +16,8 @@ PX, PY, R = _cdefine("SAT_PLOT_X"), _cdefine("SAT_PLOT_Y"), _cdefine("SAT_PLOT_R
 RY = round(R * 6.5 / 9.5)
 FX, FW, FP = _cdefine("SAT_FRAME_X"), _cdefine("SAT_FRAME_W"), _cdefine("SAT_FRAME_PAGES")
 FONT_C = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "App", "font.c")
+if not os.path.exists(FONT_C):                          # Android APK: copy next to main.py
+    FONT_C = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "font.c")
 
 
 def _font3x5():
